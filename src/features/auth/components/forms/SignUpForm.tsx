@@ -170,11 +170,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
         description: "Se ha enviado un código de verificación a tu email",
       });
 
-      // ✅ Almacenar tokens si vienen en la respuesta
-      if (response.access_token) {
-        localStorage.setItem('access_token', response.access_token);
-        localStorage.setItem('refresh_token', response.refresh_token);
-      }
+      // ✅ NO almacenar tokens hasta que se verifique el email
+      // Los tokens se almacenarán después de verificar el código en EmailVerificationPage
 
       // ✅ Redirigir a verificación de email
       onSuccess();

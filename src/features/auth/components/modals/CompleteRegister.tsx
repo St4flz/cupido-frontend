@@ -26,11 +26,24 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
     dia: '',
     mes: '',
     año: '',
-    descripcion: '',
-    acceptTerms: false
+    descripcion: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ✅ Función para verificar si el formulario es válido
+  const isFormValid = () => {
+    return (
+      formData.nombres.trim() !== '' &&
+      formData.apellidos.trim() !== '' &&
+      formData.genero_id !== 0 &&
+      formData.dia !== '' &&
+      formData.mes !== '' &&
+      formData.año !== '' &&
+      formData.descripcion.trim() !== '' &&
+      Object.keys(errors).length === 0
+    );
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -54,16 +67,16 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
     }
   }, [initialData]);
 
-  const validateField = (name: string, value: string | boolean) => {
+  const validateField = (name: string, value: string) => {
     const newErrors = { ...errors };
 
     switch (name) {
       case 'nombres':
         if (!value) {
           newErrors.nombres = 'El nombre es obligatorio';
-        } else if (typeof value === 'string' && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
           newErrors.nombres = 'Solo letras y espacios';
-        } else if (typeof value === 'string' && value.length > 50) {
+        } else if (value.length > 50) {
           newErrors.nombres = 'Máximo 50 caracteres';
         } else {
           delete newErrors.nombres;
@@ -73,9 +86,9 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
       case 'apellidos':
         if (!value) {
           newErrors.apellidos = 'Los apellidos son obligatorios';
-        } else if (typeof value === 'string' && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
           newErrors.apellidos = 'Solo letras y espacios';
-        } else if (typeof value === 'string' && value.length > 50) {
+        } else if (value.length > 50) {
           newErrors.apellidos = 'Máximo 50 caracteres';
         } else {
           delete newErrors.apellidos;
@@ -85,7 +98,7 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
       case 'dia':
         if (!value) {
           newErrors.fecha = 'El día es obligatorio';
-        } else if (typeof value === 'string' && (!/^\d{1,2}$/.test(value) || parseInt(value) < 1 || parseInt(value) > 31)) {
+        } else if (!/^\d{1,2}$/.test(value) || parseInt(value) < 1 || parseInt(value) > 31) {
           newErrors.fecha = 'Día inválido';
         } else {
           delete newErrors.fecha;
@@ -104,7 +117,7 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
         const currentYear = new Date().getFullYear();
         if (!value) {
           newErrors.fecha = 'El año es obligatorio';
-        } else if (typeof value === 'string' && (!/^\d{4}$/.test(value) || parseInt(value) > currentYear - 18)) {
+        } else if (!/^\d{4}$/.test(value) || parseInt(value) > currentYear - 18) {
           newErrors.fecha = `Mayor de 18 años`;
         } else {
           delete newErrors.fecha;
@@ -114,20 +127,12 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
       case 'descripcion':
         if (!value) {
           newErrors.descripcion = 'La descripción es obligatoria';
-        } else if (typeof value === 'string' && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.,!?]+$/.test(value)) {
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.,!?]+$/.test(value)) {
           newErrors.descripcion = 'Solo letras y signos';
-        } else if (typeof value === 'string' && value.length > 500) {
+        } else if (value.length > 500) {
           newErrors.descripcion = 'Máximo 500 caracteres';
         } else {
           delete newErrors.descripcion;
-        }
-        break;
-
-      case 'acceptTerms':
-        if (!value) {
-          newErrors.acceptTerms = 'Debes aceptar los términos';
-        } else {
-          delete newErrors.acceptTerms;
         }
         break;
     }
@@ -135,7 +140,7 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
     setErrors(newErrors);
   };
 
-  const handleChange = (field: string, value: string | boolean) => {
+  const handleChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -147,13 +152,13 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validar todos los campos antes de enviar
     validateField('nombres', formData.nombres);
     validateField('apellidos', formData.apellidos);
     validateField('dia', formData.dia);
     validateField('mes', formData.mes);
     validateField('año', formData.año);
     validateField('descripcion', formData.descripcion);
-    validateField('acceptTerms', formData.acceptTerms);
 
     if (formData.genero_id === 0) {
       setErrors(prev => ({ ...prev, genero: 'Selecciona un género' }));
@@ -164,6 +169,16 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
       toast({
         title: "Error de validación",
         description: "Por favor corrige los errores en el formulario",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Verificar que todos los campos requeridos estén completos
+    if (!isFormValid()) {
+      toast({
+        title: "Campos incompletos",
+        description: "Por favor completa todos los campos requeridos",
         variant: "destructive"
       });
       return;
@@ -341,12 +356,11 @@ const CompleteRegister: React.FC<CompleteRegisterProps> = ({
           </div>
         </div>
 
-
         {/* Botón de envío compacto */}
         <div className="pt-2">
           <button
             type="submit"
-            disabled={isSubmitting || Object.keys(errors).length > 0 || !formData.acceptTerms}
+            disabled={!isFormValid() || isSubmitting}
             className="w-full bg-[#E93923] hover:bg-[#d1321f] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 font-['Poppins'] text-xs"
           >
             {isSubmitting ? 'Guardando...' : 'Continuar'}

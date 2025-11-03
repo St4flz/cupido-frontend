@@ -63,11 +63,17 @@ const EmailVerificationPage: React.FC = () => {
     try {
       // Verificar el código con el backend
       const response = await verifyCode(email, code);
-      
+
       toast({
         title: "¡Email verificado!",
         description: "Tu dirección de email ha sido verificada correctamente.",
       });
+
+      // ✅ Almacenar tokens después de verificar el email (solo para registro)
+      if (from === 'register' && response.access_token) {
+        localStorage.setItem('access_token', response.access_token);
+        localStorage.setItem('refresh_token', response.refresh_token || '');
+      }
 
       // ✅ Redirigir según el flujo de origen
       if (from === 'register') {
