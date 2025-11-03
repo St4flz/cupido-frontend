@@ -1,37 +1,48 @@
-// src/features/auth/hooks/useEmailVerification.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authAPI } from '../lib/authAPI';
 
-export const useEmailVerification = () => {
+interface UseEmailVerificationResult {
+  verifyCode: (email: string, code: string) => Promise<{ success: boolean; data?: any; error?: any }>;
+  resendCode: (email: string) => Promise<{ success: boolean; error?: any }>;
+  isResending: boolean;
+  countdown: number;
+}
+
+export const useEmailVerification = (initialDelay: number = 60): UseEmailVerificationResult => {
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Countdown timer para reenvío
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+      timerRef.current = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
     }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [countdown]);
 
   const verifyCode = async (email: string, code: string) => {
-    return await authAPI.verifyEmail({ email, code });
+    try {
+      const response = await authAPI.verifyEmail({ email, code });
+      return { success: true, data: response };
+    } catch (error: any) {
+      return { success: false, error };
+    }
   };
 
   const resendCode = async (email: string) => {
     setIsResending(true);
     try {
-      await authAPI.resendCode({email});
-      setCountdown(60); // 60 segundos de espera
+      await authAPI.resendCode({ email });
+      setCountdown(initialDelay);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error };
     } finally {
       setIsResending(false);
     }
   };
 
-  return {
-    verifyCode,
-    resendCode,
-    isResending,
-    countdown
-  };
+  return { verifyCode, resendCode, isResending, countdown };
 };

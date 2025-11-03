@@ -37,8 +37,9 @@ const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleRegisterSuccess = () => {
-    onClose();
+    // Primero navegar, luego cerrar el modal para evitar conflictos de timing
     navigate('/auth/verify-email', { state: { from: 'register' } });
+    onClose();
   };
 
   const handleForgotPassword = () => {

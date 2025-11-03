@@ -46,7 +46,7 @@ const EmailVerificationPage: React.FC = () => {
     navigate('/');
   };
 
-  // ✅ Handler para verificar el código
+  // ✅ Handler para verificar el código CON MEJORAS DE SEGURIDAD
   const handleVerify = async (code: string) => {
     if (!email) {
       toast({
@@ -69,17 +69,40 @@ const EmailVerificationPage: React.FC = () => {
         description: "Tu dirección de email ha sido verificada correctamente.",
       });
 
-      // ✅ Redirigir según el flujo de origen
+      // ✅ FLUJO MEJORADO - Verificar creación real de cuenta
       if (from === 'register') {
-        // Flujo de registro: el usuario se crea después de verificar el email
-        // Siempre redirigir a completar perfil ya que el usuario acaba de ser creado
-        navigate('/auth/complete-register', {
-          state: {
-            email,
-            from: 'register',
-            verificationData: response
-          }
-        });
+        // 🔐 VERIFICACIÓN CRÍTICA: Confirmar que el usuario fue creado
+        try {
+          // Intentar obtener el token de autenticación
+          await authAPI.getUserProfile();
+          
+          // Si llegamos aquí, el usuario existe y está autenticado
+          // Redirigir a completar perfil
+          navigate('/auth/complete-register', {
+            state: {
+              email,
+              from: 'register',
+              verificationData: response
+            }
+          });
+          
+        } catch (profileError) {
+          console.error('Error verificando creación de usuario:', profileError);
+          
+          // ❌ EL USUARIO NO FUE CREADO - No permitir continuar
+          toast({
+            title: "Error en la creación de cuenta",
+            description: "No se pudo crear tu cuenta. Por favor, contacta con soporte técnico.",
+            variant: "destructive"
+          });
+          
+          // Redirigir al inicio para que intente registrarse nuevamente
+          setTimeout(() => {
+            navigate('/');
+          }, 3000);
+          return;
+        }
+        
       } else if (from === 'login') {
         // Flujo de login: verificar estado de perfil
         try {
@@ -186,7 +209,7 @@ const EmailVerificationPage: React.FC = () => {
     <div 
       className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: "url('/src/assets/background_verification.webp')" // Reemplaza con tu imagen de fondo
+        backgroundImage: "url('/src/assets/background_verification.webp')"
       }}
     >
       <div className="w-full max-w-md">
@@ -211,7 +234,7 @@ const EmailVerificationPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Modal de verificación - personalizado para coincidir con la imagen */}
+          {/* Modal de verificación */}
           <div className="bg-white/80 rounded-xl p-6 shadow-lg mb-6">
             <EmailVerificationModal
               isOpen={true}
@@ -223,11 +246,10 @@ const EmailVerificationPage: React.FC = () => {
               error={error}
               countdown={countdown}
               isResending={isResending}
-              // Props personalizados para coincidir con el diseño de la imagen
             />
           </div>
 
-          {/* Botón de reenviar código - texto exacto de la imagen */}
+          {/* Botón de reenviar código */}
           <div className="text-center mb-6">
             <button
               onClick={handleResendCode}
@@ -238,7 +260,7 @@ const EmailVerificationPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Botón de volver - más discreto */}
+          {/* Botón de volver */}
           <div className="text-center">
             <button
               onClick={handleClose}
