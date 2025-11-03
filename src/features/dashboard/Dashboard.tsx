@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppStore } from '@/store/appStore';
 import { useToast } from '@/hooks/use-toast';
-import { authAPI } from '@/lib/api';
+import { authAPI } from '@/features/auth/lib/authAPI';
 
 const Dashboard: React.FC = () => {
   const { closeModals, logout, user } = useAppStore();

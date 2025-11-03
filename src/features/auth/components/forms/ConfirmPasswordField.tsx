@@ -1,55 +1,60 @@
+// src/features/auth/components/forms/ConfirmPasswordField.tsx
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Check, X } from 'lucide-react';
 
 interface ConfirmPasswordFieldProps {
   value: string;
   onChange: (value: string) => void;
   originalPassword: string;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-const ConfirmPasswordField: React.FC<ConfirmPasswordFieldProps> = ({ 
-  value, 
-  onChange, 
-  originalPassword 
+const ConfirmPasswordField: React.FC<ConfirmPasswordFieldProps> = ({
+  value,
+  onChange,
+  originalPassword,
+  disabled = false,
+  placeholder = "Confirma tu contraseña"
 }) => {
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const showMatchIndicator = value.length > 0 && originalPassword.length > 0;
-  const passwordsMatch = value === originalPassword;
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordsMatch = value === originalPassword && value.length > 0;
 
   return (
-    <div className="w-full">
-      <label className="block text-xs font-medium text-gray-700 mb-1.5">
-        Confirmar Contraseña
-      </label>
-      <div className="relative">
-        <input
-          type={showConfirm ? "text" : "password"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Repite tu contraseña"
-          maxLength={50}
-          className="w-full px-2.5 py-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-pink-500 focus:border-transparent text-xs"
-        />
-        <button
-          type="button"
-          onClick={() => setShowConfirm(!showConfirm)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-        >
-          {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
-      </div>
+    <div className="relative">
+      <input
+        type={showPassword ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E93923] pr-20 disabled:opacity-50 ${
+          value.length > 0 
+            ? passwordsMatch 
+              ? 'border-green-300' 
+              : 'border-red-300'
+            : 'border-gray-300'
+        }`}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
       
-      {showMatchIndicator && (
-        <div className="flex items-center mt-0.5 text-xs">
-          <div
-            className={`w-1 h-1 rounded-full mr-1 ${
-              passwordsMatch ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          />
-          <span className={passwordsMatch ? 'text-green-600' : 'text-red-500'}>
-            {passwordsMatch ? 'Contraseñas coinciden' : 'No coinciden'}
-          </span>
+      {/* Icono de visibilidad */}
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+        disabled={disabled}
+      >
+        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+
+      {/* Icono de validación */}
+      {value.length > 0 && (
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+          {passwordsMatch ? (
+            <Check className="w-4 h-4 text-green-500" />
+          ) : (
+            <X className="w-4 h-4 text-red-500" />
+          )}
         </div>
       )}
     </div>

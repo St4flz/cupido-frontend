@@ -6,15 +6,13 @@ import { useAppStore } from '@/store/appStore';
 import { useEffect } from 'react';
 import { ParticlesComponent } from './Particles';
 
-
-
 interface HeroSectionProps {
-  onOpenSignup?: () => void;
-  openLogin?: () => void;
+  onLoginClick?: () => void;
+  onSignupClick?: () => void;
 }
 
-export default function HeroSection() {
-  const { theme, openSigUp, openLogin } = useAppStore();
+export default function HeroSection({ onLoginClick, onSignupClick }: HeroSectionProps) {
+  const { theme } = useAppStore();
   const currentGif = theme === 'masculino' ? manGif : heroPreloaderGif;
 
   useEffect(() => { 
@@ -24,6 +22,27 @@ export default function HeroSection() {
       img.src = gif;
     });
   }, []);
+
+  // ✅ Handlers que priorizan las props, con fallback al store
+  const handleSignUp = () => {
+    if (onSignupClick) {
+      onSignupClick(); // Usa la prop del nuevo sistema
+    } else {
+      // Fallback al sistema antiguo (para compatibilidad)
+      const { openSigUp } = useAppStore.getState();
+      openSigUp();
+    }
+  };
+
+  const handleLogin = () => {
+    if (onLoginClick) {
+      onLoginClick(); // Usa la prop del nuevo sistema
+    } else {
+      // Fallback al sistema antiguo (para compatibilidad)
+      const { openLogin } = useAppStore.getState();
+      openLogin();
+    }
+  };
 
   return (
     <section 
@@ -52,14 +71,14 @@ export default function HeroSection() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Button
-                onClick={openSigUp}
+                onClick={handleSignUp} // ✅ Usa el nuevo handler
                 className="btn-hero text-lg px-8 py-4"
               >
                 <Heart className="w-5 h-5 mr-2" />
                 Crear cuenta
               </Button>
               <Button
-                onClick={openLogin}
+                onClick={handleLogin} // ✅ Usa el nuevo handler
                 variant="outline"
                 className="btn-outline text-lg px-8 py-4"
               >
@@ -80,7 +99,7 @@ export default function HeroSection() {
           </div>
 
           <div className="relative animate-scale-in" style={{ animationDelay: '0.3s' }}>
-          <div className="relative mx-auto max-w-lg lg:max-w-xl">  
+            <div className="relative mx-auto max-w-lg lg:max-w-xl">  
               <div className="relative">
                 <img
                   src={currentGif}

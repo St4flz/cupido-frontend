@@ -1,534 +1,359 @@
-// CompleteRegister.tsx - RESPONSIVE
+// src/features/auth/components/modals/CompleteRegister.tsx
 import React, { useState, useEffect } from 'react';
-import RightSideWithParticles from '../shared/RightSideWithParticles';
-import { authAPI } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { useAppStore } from '@/store/appStore';
 
 interface CompleteRegisterProps {
   isOpen: boolean;
-  onSubmit: (data: RegistrationData) => void;
+  onSubmit: (data: any) => void;
   onClose: () => void;
-  isSubmitting?: boolean;
-}
-
-export interface RegistrationData {
-  name: string;
-  lastName: string;
-  gender: string;
-  birthDate: {
-    day: string;    
-    month: string;
-    year: string;
-  };
-  description: string;
+  isSubmitting: boolean;
+  initialData?: any;
 }
 
 const CompleteRegister: React.FC<CompleteRegisterProps> = ({
   isOpen,
   onSubmit,
   onClose,
-  isSubmitting = false
+  isSubmitting,
+  initialData
 }) => {
-  const [formData, setFormData] = useState<RegistrationData>({
-    name: '',
-    lastName: '',
-    gender: '',
-    birthDate: {
-      day: '',
-      month: '',
-      year: ''
-    },
-    description: ''
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    nombres: '',
+    apellidos: '',
+    genero_id: 0,
+    dia: '',
+    mes: '',
+    año: '',
+    descripcion: '',
+    acceptTerms: false
   });
 
-  const [errors, setErrors] = useState<Partial<RegistrationData>>({});
-  const { toast } = useToast();
-  const { openDashboard } = useAppStore();
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Resetear form cuando se abre
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        name: '',
-        lastName: '',
-        gender: '',
-        birthDate: {
-          day: '',
-          month: '',
-          year: ''
-        },
-        description: ''
-      });
-      setErrors({});
-    }
-  }, [isOpen]);
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        nombres: initialData.nombres || '',
+        apellidos: initialData.apellidos || '',
+        genero_id: initialData.genero_id || 0,
+        descripcion: initialData.descripcion || ''
+      }));
 
-  const handleInputChange = (field: keyof Omit<RegistrationData, 'birthDate'>, value: string) => {
+      if (initialData.fechanacimiento) {
+        const [year, month, day] = initialData.fechanacimiento.split('-');
+        setFormData(prev => ({
+          ...prev,
+          dia: day || '',
+          mes: month || '',
+          año: year || ''
+        }));
+      }
+    }
+  }, [initialData]);
+
+  const validateField = (name: string, value: string | boolean) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case 'nombres':
+        if (!value) {
+          newErrors.nombres = 'El nombre es obligatorio';
+        } else if (typeof value === 'string' && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+          newErrors.nombres = 'Solo letras y espacios';
+        } else if (typeof value === 'string' && value.length > 50) {
+          newErrors.nombres = 'Máximo 50 caracteres';
+        } else {
+          delete newErrors.nombres;
+        }
+        break;
+
+      case 'apellidos':
+        if (!value) {
+          newErrors.apellidos = 'Los apellidos son obligatorios';
+        } else if (typeof value === 'string' && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+          newErrors.apellidos = 'Solo letras y espacios';
+        } else if (typeof value === 'string' && value.length > 50) {
+          newErrors.apellidos = 'Máximo 50 caracteres';
+        } else {
+          delete newErrors.apellidos;
+        }
+        break;
+
+      case 'dia':
+        if (!value) {
+          newErrors.fecha = 'El día es obligatorio';
+        } else if (typeof value === 'string' && (!/^\d{1,2}$/.test(value) || parseInt(value) < 1 || parseInt(value) > 31)) {
+          newErrors.fecha = 'Día inválido';
+        } else {
+          delete newErrors.fecha;
+        }
+        break;
+
+      case 'mes':
+        if (!value) {
+          newErrors.fecha = 'El mes es obligatorio';
+        } else {
+          delete newErrors.fecha;
+        }
+        break;
+
+      case 'año':
+        const currentYear = new Date().getFullYear();
+        if (!value) {
+          newErrors.fecha = 'El año es obligatorio';
+        } else if (typeof value === 'string' && (!/^\d{4}$/.test(value) || parseInt(value) > currentYear - 18)) {
+          newErrors.fecha = `Mayor de 18 años`;
+        } else {
+          delete newErrors.fecha;
+        }
+        break;
+
+      case 'descripcion':
+        if (!value) {
+          newErrors.descripcion = 'La descripción es obligatoria';
+        } else if (typeof value === 'string' && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.,!?]+$/.test(value)) {
+          newErrors.descripcion = 'Solo letras y signos';
+        } else if (typeof value === 'string' && value.length > 500) {
+          newErrors.descripcion = 'Máximo 500 caracteres';
+        } else {
+          delete newErrors.descripcion;
+        }
+        break;
+
+      case 'acceptTerms':
+        if (!value) {
+          newErrors.acceptTerms = 'Debes aceptar los términos';
+        } else {
+          delete newErrors.acceptTerms;
+        }
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
+
+    validateField(field, value);
   };
 
-  const handleBirthDateChange = (field: 'day' | 'month' | 'year', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      birthDate: {
-        ...prev.birthDate,
-        [field]: value
-      }
-    }));
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Partial<RegistrationData> = {};
-
-    if (!formData.name.trim()) newErrors.name = 'El nombre es requerido';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Los apellidos son requeridos';
-    if (!formData.gender) newErrors.gender = 'El sexo es requerido';
-    if (!formData.description.trim()) newErrors.description = 'La descripción es requerida';
-    
-    // Validate birth date
-    if (!formData.birthDate.day || !formData.birthDate.month || !formData.birthDate.year) {
-      newErrors.birthDate = { day: '', month: '', year: '' }; // Mark as error
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    validateField('nombres', formData.nombres);
+    validateField('apellidos', formData.apellidos);
+    validateField('dia', formData.dia);
+    validateField('mes', formData.mes);
+    validateField('año', formData.año);
+    validateField('descripcion', formData.descripcion);
+    validateField('acceptTerms', formData.acceptTerms);
 
-    try {
-      // Formatear fecha de nacimiento
-      const birthDate = `${formData.birthDate.year}-${formData.birthDate.month.padStart(2, '0')}-${formData.birthDate.day.padStart(2, '0')}`;
+    if (formData.genero_id === 0) {
+      setErrors(prev => ({ ...prev, genero: 'Selecciona un género' }));
+      return;
+    }
 
-      // Mapear género a ID (asumiendo que el backend espera IDs numéricos)
-      const genderMapping: { [key: string]: number } = {
-        'male': 1,    // Asumiendo que 1 es masculino
-        'female': 2,  // Asumiendo que 2 es femenino
-        'other': 3    // Asumiendo que 3 es otro
-      };
-
-      const genderId = genderMapping[formData.gender] || 1;
-
-      // Llamar al endpoint real del backend
-      const response = await authAPI.updateProfile({
-        nombres: formData.name,
-        apellidos: formData.lastName,
-        genero_id: genderId,
-        fechanacimiento: birthDate,
-        descripcion: formData.description
-      });
-
-      console.log('Perfil actualizado:', response);
-
-      // Verificar el estado del usuario después de actualizar el perfil
-      await verifyUserStatusAfterUpdate();
-
-    } catch (error: any) {
-      console.error('Error al completar perfil:', error);
-
-      let errorMessage = "No pudimos completar tu perfil. Intenta de nuevo.";
-
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.data?.nombres) {
-        errorMessage = Array.isArray(error.response.data.nombres)
-          ? error.response.data.nombres[0]
-          : error.response.data.nombres;
-      } else if (error.response?.data?.apellidos) {
-        errorMessage = Array.isArray(error.response.data.apellidos)
-          ? error.response.data.apellidos[0]
-          : error.response.data.apellidos;
-      } else if (error.response?.data?.genero_id) {
-        errorMessage = Array.isArray(error.response.data.genero_id)
-          ? error.response.data.genero_id[0]
-          : error.response.data.genero_id;
-      } else if (error.response?.data?.fechanacimiento) {
-        errorMessage = Array.isArray(error.response.data.fechanacimiento)
-          ? error.response.data.fechanacimiento[0]
-          : error.response.data.fechanacimiento;
-      } else if (error.response?.data?.descripcion) {
-        errorMessage = Array.isArray(error.response.data.descripcion)
-          ? error.response.data.descripcion[0]
-          : error.response.data.descripcion;
-      }
-
+    if (Object.keys(errors).length > 0) {
       toast({
-        title: "Error al completar perfil",
-        description: errorMessage,
+        title: "Error de validación",
+        description: "Por favor corrige los errores en el formulario",
         variant: "destructive"
       });
-    }
-  };
-
-  const verifyUserStatusAfterUpdate = async () => {
-    try {
-      // Obtener datos del usuario usando el endpoint user-get
-      const userData = await authAPI.getUserProfile();
-      
-      console.log('Datos del usuario después de actualizar:', userData);
-      
-      const estado = userData.estado;
-      const shouldCompleteProfile = userData.should_complete_profile;
-
-      if (estado === '2' && !shouldCompleteProfile) {
-        // Perfil completado exitosamente - redirigir al dashboard
-        toast({
-          title: "¡Perfil completado!",
-          description: "Tu perfil ha sido completado exitosamente.",
-        });
-
-        // Cerrar modal y abrir dashboard
-        onClose();
-        setTimeout(() => {
-          openDashboard();
-        }, 1000);
-      } else {
-        // Aún hay campos faltantes
-        toast({
-          title: "Perfil parcialmente completado",
-          description: "Tu perfil aún necesita más información. Revisa los campos requeridos.",
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      console.error('Error al verificar estado del usuario después de actualizar:', error);
-      
-      toast({
-        title: "Error de verificación",
-        description: "No pudimos verificar el estado de tu perfil. Intenta de nuevo.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleCloseCompleteRegister = async () => {
-  // Call logout endpoint when closing
-      await authAPI.logout();
-  try{
-      toast({
-        title: "Sesión cerrada",
-        description: "Has cerrado sesión exitosamente.",
-      });
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-      // Continue with closing even if logout fails
+      return;
     }
 
-    // Reset form fields when closing
-    setFormData({
-      name: '',
-      lastName: '',
-      gender: '',
-      birthDate: {
-        day: '',
-        month: '',
-        year: ''
-      },
-      description: ''
-    });
-    setErrors({});
-    onClose();
+    const fechaNacimiento = `${formData.año}-${formData.mes.padStart(2, '0')}-${formData.dia.padStart(2, '0')}`;
+
+    const submitData = {
+      nombres: formData.nombres.trim(),
+      apellidos: formData.apellidos.trim(),
+      genero_id: formData.genero_id,
+      fechanacimiento: fechaNacimiento,
+      descripcion: formData.descripcion.trim()
+    };
+
+    onSubmit(submitData);
   };
-
-  // Opciones para los selects
-  const genderOptions = [
-    { value: 'male', label: 'Masculino' },
-    { value: 'female', label: 'Femenino' },
-    { value: 'other', label: 'Otro' },
-  ];
-
-  const months = [
-    { value: '01', label: 'Enero' },
-    { value: '02', label: 'Febrero' },
-    { value: '03', label: 'Marzo' },
-    { value: '04', label: 'Abril' },
-    { value: '05', label: 'Mayo' },
-    { value: '06', label: 'Junio' },
-    { value: '07', label: 'Julio' },
-    { value: '08', label: 'Agosto' },
-    { value: '09', label: 'Septiembre' },
-    { value: '10', label: 'Octubre' },
-    { value: '11', label: 'Noviembre' },
-    { value: '12', label: 'Diciembre' }
-  ];
-
-  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   if (!isOpen) return null;
 
+  const meses = [
+    { value: '01', label: 'Enero' }, { value: '02', label: 'Febrero' }, { value: '03', label: 'Marzo' },
+    { value: '04', label: 'Abril' }, { value: '05', label: 'Mayo' }, { value: '06', label: 'Junio' },
+    { value: '07', label: 'Julio' }, { value: '08', label: 'Agosto' }, { value: '09', label: 'Septiembre' },
+    { value: '10', label: 'Octubre' }, { value: '11', label: 'Noviembre' }, { value: '12', label: 'Diciembre' }
+  ];
+
   return (
-    <>
-      <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm overflow-auto">
-        {/* Contenedor principal RESPONSIVE */}
-        <div className="w-full min-h-full bg-[#F2D6CD] relative flex items-center justify-center lg:justify-start py-4">
-          
-          {/* Componente de mitad derecha con partículas - OCULTO EN MÓVIL */}
-          <div className="hidden lg:block">
-            <RightSideWithParticles>
-              {/* Imagen más grande */}
-              <div className="absolute right-0 bottom-0 h-[85vh] max-w-[45vw] flex items-end z-10"> 
-                <img 
-                  src="src\assets\flat-valentine-s-day-photocall-template-Photoroom 1.webp" 
-                  alt="Decoración" 
-                  className="h-full w-auto object-right-bottom object-contain"
-                />
-              </div>
-            </RightSideWithParticles>
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Campos ultra compactos */}
+        <div className="grid gap-2">
+          {/* Nombre */}
+          <div className="space-y-0.5">
+            <label className="block text-black text-xs font-medium font-['Poppins']">
+              Nombre:
+            </label>
+            <input
+              type="text"
+              value={formData.nombres}
+              onChange={(e) => handleChange('nombres', e.target.value)}
+              className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs ${
+                errors.nombres ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder="Tu nombre"
+              disabled={isSubmitting}
+            />
+            {errors.nombres && (
+              <p className="text-red-500 text-xs font-['Poppins'] mt-0.5">{errors.nombres}</p>
+            )}
           </div>
 
-          {/* Botón para cerrar */}
-          <button
-            onClick={handleCloseCompleteRegister}
-            className="absolute top-4 right-4 text-gray-700 hover:text-gray-900 p-2 rounded-full hover:bg-rose-300 transition-colors z-30"
-            aria-label="Cerrar"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {/* Apellidos */}
+          <div className="space-y-0.5">
+            <label className="block text-black text-xs font-medium font-['Poppins']">
+              Apellidos:
+            </label>
+            <input
+              type="text"
+              value={formData.apellidos}
+              onChange={(e) => handleChange('apellidos', e.target.value)}
+              className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs ${
+                errors.apellidos ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder="Tus apellidos"
+              disabled={isSubmitting}
+            />
+            {errors.apellidos && (
+              <p className="text-red-500 text-xs font-['Poppins'] mt-0.5">{errors.apellidos}</p>
+            )}
+          </div>
 
-          {/* Contenedor del formulario RESPONSIVE */}
-          <div className="w-full max-w-md mx-4 lg:mx-0 lg:ml-10 xl:ml-20 2xl:ml-28 z-20 bg-white/80 lg:bg-transparent rounded-xl lg:rounded-none p-6 lg:p-0">
-            
-            {/* Logo más compacto */}
-            <div className="flex justify-center mb-4">
-              <img 
-                src="src/assets/logo-login.webp" 
-                alt="CUPIDO Logo" 
-                className="w-16 h-14"
+          {/* Sexo */}
+          <div className="space-y-0.5">
+            <label className="block text-black text-xs font-medium font-['Poppins']">
+              Sexo:
+            </label>
+            <select
+              value={formData.genero_id}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, genero_id: parseInt(e.target.value) }));
+                if (errors.genero) setErrors(prev => ({ ...prev, genero: '' }));
+              }}
+              className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs ${
+                errors.genero ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+              disabled={isSubmitting}
+            >
+              <option value={0}>Selecciona género</option>
+              <option value={1}>Masculino</option>
+              <option value={2}>Femenino</option>
+              <option value={3}>Otro</option>
+            </select>
+            {errors.genero && (
+              <p className="text-red-500 text-xs font-['Poppins'] mt-0.5">{errors.genero}</p>
+            )}
+          </div>
+
+          {/* Fecha de Nacimiento */}
+          <div className="space-y-0.5">
+            <label className="block text-black text-xs font-medium font-['Poppins']">
+              Fecha de Nacimiento:
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              <input
+                type="text"
+                value={formData.dia}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 2);
+                  handleChange('dia', value);
+                }}
+                className={`w-full px-1 py-1.5 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs ${
+                  errors.fecha ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+                placeholder="DD"
+                disabled={isSubmitting}
+              />
+              
+              <select
+                value={formData.mes}
+                onChange={(e) => handleChange('mes', e.target.value)}
+                className={`w-full px-1 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs ${
+                  errors.fecha ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+                disabled={isSubmitting}
+              >
+                <option value="">MM</option>
+                {meses.map((mes) => (
+                  <option key={mes.value} value={mes.value}>
+                    {mes.label}
+                  </option>
+                ))}
+              </select>
+              
+              <input
+                type="text"
+                value={formData.año}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  handleChange('año', value);
+                }}
+                className={`w-full px-1 py-1.5 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs ${
+                  errors.fecha ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+                placeholder="AAAA"
+                disabled={isSubmitting}
               />
             </div>
+            {errors.fecha && (
+              <p className="text-red-500 text-xs font-['Poppins'] mt-0.5">{errors.fecha}</p>
+            )}
+          </div>
 
-            {/* Header más compacto y centrado */}
-            <div className="mb-6">
-              <div className="text-black text-base font-normal font-['Poppins'] text-center">
-                  Bienvenido a{' '}
-                  <span className="text-[#E93923] font-semibold">CUPIDO</span>
-              </div>
-              <div className="text-black text-lg font-medium font-['Poppins'] mt-1 text-center">
-                  Completa tu registro
-              </div>
-              <p className="text-gray-700 text-xs mt-1 font-['Poppins'] max-w-md leading-relaxed text-center mx-auto">
-                  Cuéntanos un poco sobre ti para que podamos personalizar tu experiencia.
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {/* Nombre y Apellidos - RESPONSIVE */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 font-['Poppins']">
-                    Nombre *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Permitir solo letras (incluye ñ, tildes y espacios)
-                      const regex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]*$/;
-                      // Solo actualiza si pasa la validación o si el campo se está vaciando
-                      if (regex.test(value) || value === "") {
-                        handleInputChange('name', value);
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Tu nombre"
-                    maxLength={50}
-                    disabled={isSubmitting}
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1 font-['Poppins']">{errors.name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 font-['Poppins']">
-                    Apellidos *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Permitir solo letras (incluye ñ, tildes y espacios)
-                      const regex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]*$/;
-                  
-                      // Solo actualiza si pasa la validación o si el campo se está vaciando
-                      if (regex.test(value) || value === "") {
-                        handleInputChange('lastName', value);
-                      }
-                    }}
-                    //onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Tus apellidos"
-                    maxLength={50}
-                    disabled={isSubmitting}
-                  />
-                  {errors.lastName && (
-                    <p className="text-red-500 text-xs mt-1 font-['Poppins']">{errors.lastName}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Sexo */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 font-['Poppins']">
-                  Sexo *
-                </label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) => handleInputChange('gender', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs ${
-                    errors.gender ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  disabled={isSubmitting}
-                >
-                  <option value="">Selecciona</option>
-                  {genderOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.gender && (
-                  <p className="text-red-500 text-xs mt-1 font-['Poppins']">{errors.gender}</p>
-                )}
-              </div>
-
-              {/* Fecha de Nacimiento - MEJORADO RESPONSIVE */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 font-['Poppins']">
-                  Fecha de Nacimiento *
-                </label>
-                <div className="grid grid-cols-3 gap-1">
-                  {/* Día */}
-                  <div>
-                    <select
-                      value={formData.birthDate.day}
-                      onChange={(e) => handleBirthDateChange('day', e.target.value)}
-                      className={`w-full px-2 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs ${
-                        errors.birthDate ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">DD</option>
-                      {days.map(day => (
-                        <option key={day} value={day}>{day}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Mes */}
-                  <div>
-                    <select
-                      value={formData.birthDate.month}
-                      onChange={(e) => handleBirthDateChange('month', e.target.value)}
-                      className={`w-full px-2 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs ${
-                        errors.birthDate ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">MM</option>
-                      {months.map(month => (
-                        <option key={month.value} value={month.value}>
-                          {month.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Año */}
-                  <div>
-                    <select
-                      value={formData.birthDate.year}
-                      onChange={(e) => handleBirthDateChange('year', e.target.value)}
-                      className={`w-full px-2 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs ${
-                        errors.birthDate ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">AAAA</option>
-                      {years.map(year => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                {errors.birthDate && (
-                  <p className="text-red-500 text-xs mt-1 font-['Poppins']">La fecha es requerida</p>
-                )}
-              </div>
-
-              {/* Descripción más compacta */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 font-['Poppins']">
-                  Descripción *
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Permitir solo letras (incluye ñ, tildes y espacios)
-                    const regex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]*$/;
-                    // Solo actualiza si pasa la validación o si el campo se está vaciando
-                    if (regex.test(value) || value === "") {
-                      handleInputChange('description', value);
-                    }
-                  }}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins'] text-xs resize-none ${
-                    errors.description ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Cuéntanos sobre ti..."
-                  rows={3}
-                  maxLength={250}
-                  disabled={isSubmitting}
-                />
-                {errors.description && (
-                  <p className="text-red-500 text-xs mt-1 font-['Poppins']">{errors.description}</p>
-                )}
-                <p className="text-xs text-gray-600 mt-1 font-['Poppins']">
-                  Haz que tu perfil destaque o cuéntanos algo especial sobre ti
-                </p>
-              </div>
-
-              {/* Botón de Registro */}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-[#E93923] hover:bg-[#d1321f] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-md transition duration-200 text-xs shadow hover:shadow-md font-['Poppins']"
-                >
-                  {isSubmitting ? 'Completando...' : 'Continuar'}
-                </button>
-              </div>
-
-            </form>
+          {/* Descripción */}
+          <div className="space-y-0.5">
+            <label className="block text-black text-xs font-medium font-['Poppins']">
+              Descripción:
+            </label>
+            <textarea
+              value={formData.descripcion}
+              onChange={(e) => handleChange('descripcion', e.target.value)}
+              rows={2}
+              className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#E93923] font-['Poppins'] text-xs resize-none ${
+                errors.descripcion ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder="Cuéntanos sobre ti..."
+              disabled={isSubmitting}
+            />
+            {errors.descripcion && (
+              <p className="text-red-500 text-xs font-['Poppins'] mt-0.5">{errors.descripcion}</p>
+            )}
+            <p className="text-xs text-gray-500 font-['Poppins']">
+              {formData.descripcion.length}/500
+            </p>
           </div>
         </div>
-      </div>
-    </>
+
+
+        {/* Botón de envío compacto */}
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={isSubmitting || Object.keys(errors).length > 0 || !formData.acceptTerms}
+            className="w-full bg-[#E93923] hover:bg-[#d1321f] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 font-['Poppins'] text-xs"
+          >
+            {isSubmitting ? 'Guardando...' : 'Continuar'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 

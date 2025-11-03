@@ -27,17 +27,14 @@ const useScroll = (threshold = 10) => {
 
 interface HeaderProps {
   onThemeChange: (theme: string) => void;
-  onOpenSignup?: () => void;
-  openLogin?: () => void;
+  onLoginClick?: () => void;
+  onSignupClick?: () => void;
 }
 
-export function Header({ onThemeChange }: HeaderProps) {
+export function Header({ onThemeChange, onLoginClick, onSignupClick }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, openSigUp, openLogin, isAuthenticated, user, logout } = useAppStore();
   const scrolled = useScroll();
-
-    // Agrega console.log para debug
-
 
   const navItems = [
     { label: 'Inicio', href: '#home' },
@@ -48,6 +45,32 @@ export function Header({ onThemeChange }: HeaderProps) {
   ];
 
   const logo = theme === 'femenino' ? logofemdark : logomascdark;
+
+  // ✅ Handlers que priorizan las props
+  const handleSignUp = () => {
+    if (onSignupClick) {
+      onSignupClick();
+    } else {
+      // Fallback al sistema antiguo
+      openSigUp();
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleLogin = () => {
+    if (onLoginClick) {
+      onLoginClick();
+    } else {
+      // Fallback al sistema antiguo
+      openLogin();
+    }
+    setIsMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+  };
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-40 border-b-2 h-[50px] transition-all duration-300 ease-in-out ${
@@ -85,7 +108,7 @@ export function Header({ onThemeChange }: HeaderProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="text-foreground"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -97,13 +120,13 @@ export function Header({ onThemeChange }: HeaderProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={openLogin}
+                  onClick={handleLogin}
                   className="text-foreground"
                 >
                   Ingresar
                 </Button>
                 <Button
-                  onClick={openSigUp}
+                  onClick={handleSignUp}
                   size="sm"
                   className="btn-hero px-6"
                 >
@@ -147,7 +170,7 @@ export function Header({ onThemeChange }: HeaderProps) {
                     </div>
                     <Button
                       variant="outline"
-                      onClick={() => { logout(); setIsMenuOpen(false); }}
+                      onClick={handleLogout}
                       className="justify-start text-foreground"
                     >
                       <LogOut className="h-4 w-4 mr-2" />
@@ -158,13 +181,13 @@ export function Header({ onThemeChange }: HeaderProps) {
                   <>
                     <Button
                       variant="outline"
-                      onClick={() => { openLogin(); setIsMenuOpen(false); }}
+                      onClick={handleLogin}
                       className="justify-start text-foreground"
                     >
                       Ingresar
                     </Button>
                     <Button
-                      onClick={() => { openSigUp(); setIsMenuOpen(false); }}
+                      onClick={handleSignUp}
                       className="btn-hero justify-start"
                     >
                       Crear cuenta

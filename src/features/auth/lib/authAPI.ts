@@ -13,6 +13,14 @@ const api: AxiosInstance = axios.create({
   withCredentials: true, // Enable sending cookies and credentials
 });
 
+// Store reference para evitar import circular
+let appStore: any = null;
+
+// Función para setear el store (DEBES LLAMARLA EN TU APP)
+export const setAppStore = (store: any) => {
+  appStore = store;
+};
+
 // Request interceptor to add auth token if available
 api.interceptors.request.use(
   (config) => {
@@ -35,16 +43,21 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Refresh token
-        const refreshResponse = await authAPI.refreshToken();
-        const newAccessToken = refreshResponse.access;
-        const newRefreshToken = refreshResponse.refresh;
+        // Refresh token - CORREGIDO: usar endpoint correcto
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const refreshResponse = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
+          refresh: refreshToken
+        });
+        
+        const newAccessToken = refreshResponse.data.access;
+        // NOTA: El refresh token normalmente no cambia en JWT
 
         // Store new tokens
         localStorage.setItem('access_token', newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem('refresh_token', newRefreshToken);
-        }
 
         // Retry original request with new access token
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -54,9 +67,14 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
 
-        // Import dynamically to avoid circular dependencies
-        const { useAppStore } = await import('@/store/appStore');
-        useAppStore.getState().logout();
+        // Usar el store de Zustand si está configurado
+        if (appStore) {
+          appStore.getState().logout();
+        } else {
+          // Fallback: recargar la página para limpiar estado
+          console.warn('App store not configured, reloading page');
+          window.location.href = '/';
+        }
 
         return Promise.reject(refreshError);
       }
@@ -93,11 +111,20 @@ export const authAPI = {
 
   login: async (data: { email: string; contrasena: string; recaptcha_token: string }) => {
     const response = await api.post('/auth/login/', data);
-    const { access, refresh } = response.data;
+    const { access, refresh, user } = response.data;
 
     if (access && refresh) {
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
+      
+      // ACTUALIZAR ZUSTAND STORE si está configurado
+      if (appStore && user) {
+        appStore.getState().login({
+          user: user,
+          access_token: access,
+          refresh_token: refresh
+        });
+      }
     }
 
     return response.data;
@@ -105,25 +132,37 @@ export const authAPI = {
 
   logout: async () => {
     const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) throw new Error('No refresh token available');
-
+    
     try {
-      const response = await api.post('/auth/logout/', { refresh: refreshToken });
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      return response.data;
+      if (refreshToken) {
+        await api.post('/auth/logout/', { refresh: refreshToken });
+      }
     } catch (error) {
+      console.warn('Logout API call failed, but clearing local state anyway', error);
+    } finally {
+      // SIEMPRE limpiar el estado local
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      throw error;
+      
+      // ACTUALIZAR ZUSTAND STORE
+      if (appStore) {
+        appStore.getState().logout();
+      }
     }
   },
 
   logoutAll: async () => {
-    const response = await api.post('/auth/logout-all/');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    return response.data;
+    try {
+      const response = await api.post('/auth/logout-all/');
+      return response.data;
+    } finally {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      
+      if (appStore) {
+        appStore.getState().logout();
+      }
+    }
   },
 
   getSession: async () => {
@@ -161,18 +200,62 @@ export const authAPI = {
     descripcion: string;
   }) => {
     const response = await api.patch('/auth/user-update/', data);
+    
+    // ACTUALIZAR USUARIO EN ZUSTAND STORE
+    if (appStore && response.data.user) {
+      const currentState = appStore.getState();
+      if (currentState.user) {
+        appStore.getState().setUser({
+          ...currentState.user,
+          ...response.data.user
+        });
+      }
+    }
+    
     return response.data;
   },
 
   deactivateAccount: async () => {
     const response = await api.post('/auth/deactivate/');
+    
+    // Limpiar estado al desactivar cuenta
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    
+    if (appStore) {
+      appStore.getState().logout();
+    }
+    
     return response.data;
   },
 
   getUserProfile: async () => {
     const response = await api.get('/auth/user-get/');
+    
+    // ACTUALIZAR USUARIO EN ZUSTAND STORE
+    if (appStore && response.data) {
+      appStore.getState().setUser(response.data);
+    }
+    
     return response.data;
   },
+
+  // NUEVO: Endpoint para refresh token
+  refreshToken: async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
+      refresh: refreshToken
+    });
+    
+    const newAccessToken = response.data.access;
+    localStorage.setItem('access_token', newAccessToken);
+    
+    return response.data;
+  }
 };
 
 export default api;

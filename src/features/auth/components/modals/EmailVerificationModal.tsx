@@ -1,5 +1,6 @@
+// src/features/auth/components/modals/EmailVerificationModal.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import backgroundImage from '../../../../assets/background_verification.webp';
+import { X, Mail, RotateCcw } from 'lucide-react';
 
 interface EmailVerificationModalProps {
   isOpen: boolean;
@@ -8,6 +9,9 @@ interface EmailVerificationModalProps {
   onResendCode: () => void;
   userEmail: string;
   isSubmitting?: boolean;
+  error?: string | null;
+  countdown?: number;
+  isResending?: boolean;
 }
 
 const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
@@ -16,75 +20,86 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   onVerify,
   onResendCode,
   userEmail,
-  isSubmitting = false
+  isSubmitting = false,
+  error = null,
+  countdown = 0,
+  isResending = false
 }) => {
-  const [code, setCode] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(60); // 60 segundos para reenviar
-  const [canResend, setCanResend] = useState(false);
+  const [code, setCode] = useState<string[]>(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // ✅ Inicializar las referencias
+  useEffect(() => {
+    inputRefs.current = inputRefs.current.slice(0, 6);
+  }, []);
+
+  // ✅ Focus automático en el primer input al abrir
   useEffect(() => {
     if (isOpen) {
-      setCode(['', '', '', '', '', '']);
-      setTimeLeft(60);
-      setCanResend(false);
-      // Enfocar el primer input cuando se abre el modal
       setTimeout(() => {
         inputRefs.current[0]?.focus();
       }, 100);
     }
   }, [isOpen]);
 
-  // Temporizador para reenviar código
+  // ✅ Reset del código al cerrar
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
+    if (!isOpen) {
+      setCode(['', '', '', '', '', '']);
     }
-  }, [timeLeft]);
+  }, [isOpen]);
 
-  const handleChange = (value: string, index: number) => {
-    if (!/^\d?$/.test(value)) return; // Solo números
+  // ✅ Handler para cambio en inputs
+  const handleChange = (index: number, value: string) => {
+    // Solo permitir números
+    const numericValue = value.replace(/[^0-9]/g, '');
+    
+    if (numericValue.length <= 1) {
+      const newCode = [...code];
+      newCode[index] = numericValue;
+      setCode(newCode);
 
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
+      // Auto-avance al siguiente input
+      if (numericValue && index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
 
-    // Auto-enfocar siguiente input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-enviar cuando todos los dígitos están llenos
-    if (newCode.every(digit => digit !== '') && index === 5) {
-      handleSubmit(newCode.join(''));
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      // Mover al input anterior al borrar
-      inputRefs.current[index - 1]?.focus();
+      // Auto-envío cuando se completan los 6 dígitos
+      if (newCode.every(digit => digit !== '') && index === 5) {
+        handleSubmit(newCode.join(''));
+      }
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
+  // ✅ Handler para teclas (Backspace)
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (!code[index] && index > 0) {
+        // Retroceder al input anterior si está vacío
+        inputRefs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  // ✅ Handler para pegar código
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text');
-    const numbers = pastedData.replace(/\D/g, '').slice(0, 6).split('');
-
-    if (numbers.length === 6) {
-      const newCode = [...code];
-      numbers.forEach((num, index) => {
-        newCode[index] = num;
-      });
+    const numericCode = pastedData.replace(/[^0-9]/g, '').slice(0, 6);
+    
+    if (numericCode.length === 6) {
+      const newCode = numericCode.split('');
       setCode(newCode);
+      
+      // Focus en el último input
       inputRefs.current[5]?.focus();
+      
+      // Auto-envío
+      handleSubmit(numericCode);
     }
   };
 
+  // ✅ Handler para enviar código
   const handleSubmit = (verificationCode?: string) => {
     const finalCode = verificationCode || code.join('');
     if (finalCode.length === 6) {
@@ -92,10 +107,9 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     }
   };
 
-  const handleResendCode = () => {
-    if (canResend) {
-      setTimeLeft(60);
-      setCanResend(false);
+  // ✅ Handler para reenviar código
+  const handleResend = () => {
+    if (countdown === 0 && !isResending) {
       onResendCode();
     }
   };
@@ -103,143 +117,131 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-[#FFF0EC] backdrop-blur-sm">
-            {/* Imagen de fondo */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity"
-          style={{
-            backgroundImage:  `url(${backgroundImage})`
-          }}
-        />
-      <div className="w-[439px] h-[680px] bg-transparent rounded-[40px] shadow-[2px_6px_4px_0px_rgba(0,0,0,0.35)] relative overflow-hidden">
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-[#F2D6CD] rounded-[40px] shadow-[2px_6px_4px_0px_rgba(0,0,0,0.35)] relative overflow-hidden">
         
-        {/* Botón para cerrar */}
+        {/* Botón cerrar */}
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 text-gray-700 hover:text-gray-900 p-2 rounded-full hover:bg-rose-300 transition-colors z-10"
-          aria-label="Cerrar verificación"
+          className="absolute top-4 right-4 text-gray-700 hover:text-gray-900 p-1 rounded-full hover:bg-rose-300 transition-colors z-10"
+          aria-label="Cerrar"
+          disabled={isSubmitting}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-6 h-6" />
         </button>
 
-        {/* Contenido */}
-        <div className="relative z-10 h-full flex flex-col p-8">
-          {/* Logo centrado en la parte superior */}
-          <div className="flex justify-center mb-4">
+        <div className="p-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
             <img 
-              src="src/assets/logo-login.webp" 
+              src="/src/assets/logo-login.webp" 
               alt="CUPIDO Logo" 
-              className="w-[70px] h-[65px]"
+              className="w-16 h-16"
             />
           </div>
 
-          {/* Header con estilos específicos */}
-          <div className="mb-6 text-center">
-            {/* Línea única: "Bienvenido a CUPIDO" */}
-            <div className="text-black text-xl font-normal font-['Poppins']">
-              Bienvenido a{' '}
-              <span className="text-[#E93923] font-semibold">CUPIDO</span>
-            </div>
-            
-            {/* Línea 2: "Verificar Email" más grande */}
-            <div className="text-black text-2xl font-medium font-['Poppins'] mt-2">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
               Verificar Email
-            </div>
-          </div>
-
-          {/* Contenido principal */}
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="text-center mb-6">
-              <div className="flex justify-center mb-4">
-                <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center">
-                  <svg className="w-7 h-7 text-[#E93923]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Bienvenido a CUPIDO
+            </p>
+            
+            {/* Icono de email */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-white/50 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-[#E93923]" />
               </div>
-              
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 font-['Poppins']">
-                Verifica tu correo electrónico
-              </h3>
-              
-              <p className="text-gray-700 mb-3 text-xs font-['Poppins']">
-                Hemos enviado un código de verificación de 6 dígitos a:
-              </p>
-              
-              <p className="text-[#E93923] font-medium mb-4 text-xs font-['Poppins']">
+            </div>
+
+            <p className="text-gray-700 mb-2">
+              Verifica tu correo electrónico
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              Ingresa el código de 6 dígitos que enviamos a:
+            </p>
+            
+            <div className="bg-white/50 rounded-lg p-3">
+              <p className="font-semibold text-gray-800 text-sm">
                 {userEmail}
               </p>
-              
-              <p className="text-xs text-gray-600 font-['Poppins']">
-                Ingresa el código que recibiste en tu correo electrónico
-              </p>
-            </div>
-
-            {/* Código de verificación */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3 text-center font-['Poppins']">
-                Código de verificación
-              </label>
-              <div className="flex justify-center space-x-2" onPaste={handlePaste}>
-                {code.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={el => inputRefs.current[index] = el}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleChange(e.target.value, index)}
-                    onKeyDown={(e) => handleKeyDown(e, index)}
-                    className="w-10 h-10 text-center text-base font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#E93923] focus:border-transparent bg-white font-['Poppins']"
-                    disabled={isSubmitting}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Reenviar código */}
-            <div className="text-center mb-6">
-              <p className="text-xs text-gray-600 font-['Poppins']">
-                ¿No recibiste el código?{' '}
-                <button
-                  type="button"
-                  onClick={handleResendCode}
-                  disabled={!canResend || isSubmitting}
-                  className={`font-medium font-['Poppins'] ${
-                    canResend && !isSubmitting
-                      ? 'text-[#E93923] hover:text-[#d1321f]'
-                      : 'text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {canResend ? 'Reenviar código' : `Reenviar en ${timeLeft}s`}
-                </button>
-              </p>
-            </div>
-
-            {/* Botón de verificar */}
-            <div className="pt-2">
-              <button
-                onClick={() => handleSubmit()}
-                disabled={code.join('').length !== 6 || isSubmitting}
-                className="w-full bg-[#E93923] hover:bg-[#d1321f] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200 text-sm shadow-md hover:shadow-lg font-['Poppins']"
-              >
-                {isSubmitting ? 'Verificando...' : 'Verificar Código'}
-              </button>
             </div>
           </div>
 
+          {/* Inputs del código */}
+          <div className="mb-8">
+            <div className="flex justify-center space-x-3 mb-6">
+              {code.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={el => inputRefs.current[index] = el}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={index === 0 ? handlePaste : undefined}
+                  className="w-12 h-12 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-[#E93923] focus:ring-2 focus:ring-[#E93923]/20 transition-all duration-200"
+                  disabled={isSubmitting}
+                  autoComplete="one-time-code"
+                />
+              ))}
+            </div>
+
+            {/* Mensaje de error */}
+            {error && (
+              <div className="text-center mb-4">
+                <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg py-2 px-3">
+                  {error}
+                </p>
+              </div>
+            )}
+
+            {/* Auto-submit info */}
+            <p className="text-center text-sm text-gray-500">
+              El código se enviará automáticamente cuando completes los 6 dígitos
+            </p>
+          </div>
+
+          {/* Botón de reenviar */}
+          <div className="text-center mb-6">
+            <button
+              onClick={handleResend}
+              disabled={countdown > 0 || isResending || isSubmitting}
+              className="inline-flex items-center text-[#E93923] hover:text-[#d1321f] disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              <RotateCcw className={`w-4 h-4 mr-2 ${isResending ? 'animate-spin' : ''}`} />
+              {isResending ? 'Enviando...' : 
+               countdown > 0 ? `Reenviar en ${countdown}s` : 'Reenviar código'}
+            </button>
+          </div>
+
+          {/* Botón de verificación manual */}
+          <button
+            onClick={() => handleSubmit()}
+            disabled={isSubmitting || code.some(digit => digit === '')}
+            className="w-full bg-[#E93923] hover:bg-[#d1321f] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Verificando...
+              </>
+            ) : (
+              'Verificar Código'
+            )}
+          </button>
+
           {/* Footer */}
-          <div className="text-center mt-4 pt-4 border-t border-rose-300">
-            <p className="text-xs text-gray-600 font-['Poppins']">
+          <div className="text-center mt-6">
+            <p className="text-sm text-gray-600">
               ¿Problemas con la verificación?{' '}
               <button
-                type="button"
                 onClick={onClose}
-                className="text-[#E93923] hover:text-[#d1321f] font-semibold underline text-xs font-['Poppins']"
+                className="text-[#E93923] hover:text-[#d1321f] underline"
               >
                 Volver al registro
               </button>
