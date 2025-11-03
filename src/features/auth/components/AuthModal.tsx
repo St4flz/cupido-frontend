@@ -1,5 +1,5 @@
 // src/features/auth/components/AuthModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LoginForm from './forms/LoginForm';
 import SignUpForm from './forms/SignUpForm';
@@ -17,6 +17,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const navigate = useNavigate();
+
+  // ✅ Efecto para sincronizar el modo cuando cambia initialMode
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   if (!isOpen) return null;
 

@@ -1,4 +1,4 @@
-// Home.tsx - VERSIÓN ACTUALIZADA CON NUEVO AUTH MODULAR
+// Home.tsx - VERSIÓN OPTIMIZADA
 import { useEffect, useState } from 'react';
 import { Header } from '@/features/home/components/Header';
 import Preloader from '@/features/home/components/Preloader';
@@ -13,7 +13,7 @@ import Footer from '@/features/home/components/Footer';
 import ThemeTransitionOverlay from '@/components/ui/ThemeTransitionOverlay';
 import ScrollToTopButton from '@/features/home/components/ScrollToTopButton';
 import { useAppStore } from '@/store/appStore';
-import { AuthModal } from '@/features/auth'; // ✅ Importación del nuevo AuthModal
+import { AuthModal } from '@/features/auth';
 import Dashboard from '@/features/dashboard/Dashboard';
 
 const Index = () => {
@@ -63,29 +63,23 @@ const Index = () => {
     }
   };
 
-  // ✅ Handler para cerrar el AuthModal
+  // ✅ Handler unificado para cerrar el AuthModal
   const handleCloseAuthModal = () => {
     setIsAuthModalOpen(false);
-    closeModals(); // También limpia el estado del store
+    closeModals();
   };
 
-  // ✅ Handler para cambiar entre login y registro dentro del modal
-  const handleSwitchAuthMode = (mode: 'login' | 'register') => {
+  // ✅ Handler unificado para abrir el modal en modo específico
+  const handleOpenAuthModal = (mode: 'login' | 'register') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
-  };
-
-  // ✅ Handlers para los botones de la página (opcional - mantienen compatibilidad)
-  const handleOpenLogin = () => {
-    setAuthModalMode('login');
-    setIsAuthModalOpen(true);
-    openLogin(); // Para mantener compatibilidad con store existente
-  };
-
-  const handleOpenRegister = () => {
-    setAuthModalMode('register');
-    setIsAuthModalOpen(true);
-    openSigUp(); // Para mantener compatibilidad con store existente
+    
+    // Actualizar store para mantener consistencia
+    if (mode === 'login') {
+      openLogin();
+    } else {
+      openSigUp();
+    }
   };
 
   return (
@@ -96,32 +90,32 @@ const Index = () => {
       <div className={showPreloader || isTransitioning ? 'opacity-0' : 'opacity-100 transition-opacity duration-1000'}>
         <Header
           onThemeChange={handleThemeChange}
-          onLoginClick={handleOpenLogin}
-          onSignupClick={handleOpenRegister}
+          onLoginClick={() => handleOpenAuthModal('login')}
+          onSignupClick={() => handleOpenAuthModal('register')}
         />
         <main>
           <HeroSection
-            onLoginClick={() => handleSwitchAuthMode('login')}
-            onSignupClick={() => handleSwitchAuthMode('register')}
+            onLoginClick={() => handleOpenAuthModal('login')}
+            onSignupClick={() => handleOpenAuthModal('register')}
           />
           <FeaturesSection />
           <HowItWorksSection />
           <SafetySection />
           <TestimonialsSection />
           <FAQSection />
-          <CTAFinalSection onSignupClick={handleOpenRegister} />
+          <CTAFinalSection onSignupClick={() => handleOpenAuthModal('register')} />
         </main>
         <Footer />
       </div>
 
-      {/* ✅ NUEVO AUTH MODAL UNIFICADO */}
+      {/* ✅ AUTH MODAL UNIFICADO */}
       <AuthModal 
         isOpen={isAuthModalOpen}
         onClose={handleCloseAuthModal}
         initialMode={authModalMode}
       />
 
-      {/* ✅ Mantener Dashboard (si es necesario) */}
+      {/* ✅ Dashboard (si es necesario) */}
       {authModal === 'dashboard' && (
         <Dashboard />
       )}
