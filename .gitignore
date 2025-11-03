@@ -27,4 +27,5 @@ dist-ssr
 .github/instructions/kluster-code-verify.instructions.md
 .kluster
 .env
-.env
+.env.*
+!.env.example
