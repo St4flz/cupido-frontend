@@ -63,21 +63,16 @@ const EmailVerificationPage: React.FC = () => {
     try {
       // Verificar el código con el backend
       const response = await verifyCode(email, code);
-
+      
       toast({
         title: "¡Email verificado!",
         description: "Tu dirección de email ha sido verificada correctamente.",
       });
 
-      // ✅ Almacenar tokens después de verificar el email (solo para registro)
-      if (from === 'register' && response.access_token) {
-        localStorage.setItem('access_token', response.access_token);
-        localStorage.setItem('refresh_token', response.refresh_token || '');
-      }
-
       // ✅ Redirigir según el flujo de origen
       if (from === 'register') {
-        // Flujo de registro: ir a completar perfil
+        // Flujo de registro: el usuario se crea después de verificar el email
+        // Siempre redirigir a completar perfil ya que el usuario acaba de ser creado
         navigate('/auth/complete-register', {
           state: {
             email,
