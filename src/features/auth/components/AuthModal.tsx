@@ -10,6 +10,12 @@ interface AuthModalProps {
   initialMode?: 'login' | 'register';
 }
 
+interface SignUpFormProps {
+  onClose: () => void;
+  onSwitchToLogin: () => void;
+  onSuccess: (email: string) => void;
+}
+
 const AuthModal: React.FC<AuthModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -36,9 +42,15 @@ const AuthModal: React.FC<AuthModalProps> = ({
     navigate('/auth/complete-register', { state: { from: 'login' } });
   };
 
-  const handleRegisterSuccess = () => {
+  const handleRegisterSuccess = (email: string) => {
     // Primero navegar, luego cerrar el modal para evitar conflictos de timing
-    navigate('/auth/verify-email', { state: { from: 'register' } });
+    console.log('🎯 Navegando a verificación con email:', email);
+    navigate('/auth/verify-email', {
+      state: {
+        from: 'register',
+        email: email
+      }
+    });
     onClose();
   };
 

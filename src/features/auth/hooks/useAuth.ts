@@ -23,7 +23,33 @@ export const useAuth = () => {
       
       return response;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Error al iniciar sesión';
+      // Extraer mensaje de error específico del backend
+      let errorMessage = 'Error al iniciar sesión';
+
+      if (err.response?.data) {
+        // Si es un error de validación del serializer (400), mostrar el mensaje específico
+        if (err.response.status === 400 && err.response.data) {
+          // Los errores de validación vienen en formato de objeto {campo: [mensaje]}
+          const validationErrors = err.response.data;
+          if (typeof validationErrors === 'object') {
+            // Tomar el primer error encontrado
+            const firstError = Object.values(validationErrors)[0];
+            if (Array.isArray(firstError)) {
+              errorMessage = firstError[0];
+            } else if (typeof firstError === 'string') {
+              errorMessage = firstError;
+            }
+          } else if (typeof validationErrors === 'string') {
+            errorMessage = validationErrors;
+          }
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        }
+      }
+
+      console.error('Login error details:', err.response?.data);
       setError(errorMessage);
       throw err;
     } finally {
@@ -34,12 +60,43 @@ export const useAuth = () => {
   const register = async (credentials: RegisterCredentials) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await authAPI.register(credentials);
       return response;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Error al registrar usuario';
+      // Extraer mensaje de error específico del backend para registro
+      let errorMessage = 'Error al registrar usuario';
+
+      if (err.response?.data) {
+        // Si es un error de validación del serializer (400), mostrar el mensaje específico
+        if (err.response.status === 400 && err.response.data) {
+          // Los errores de validación vienen en formato de objeto {campo: [mensaje]}
+          const validationErrors = err.response.data;
+          if (typeof validationErrors === 'object') {
+            // Tomar el primer error encontrado
+            const firstError = Object.values(validationErrors)[0];
+            if (Array.isArray(firstError)) {
+              errorMessage = firstError[0];
+            } else if (typeof firstError === 'string') {
+              errorMessage = firstError;
+            }
+          } else if (typeof validationErrors === 'string') {
+            errorMessage = validationErrors;
+          }
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        }
+
+        // Manejo específico de errores comunes de registro
+        if (err.response.status === 409) {
+          errorMessage = 'Este correo electrónico ya está registrado';
+        }
+      }
+
+      console.error('Register error details:', err.response?.data);
       setError(errorMessage);
       throw err;
     } finally {

@@ -32,6 +32,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
       return;
     }
 
+    // Debug: Mostrar datos que se envían al backend
+    console.log('🔍 Datos enviados al backend en login:', {
+      email,
+      contrasena: password ? '[HIDDEN]' : '',
+      recaptcha_token: recaptchaToken ? '[PRESENT]' : '[MISSING]'
+    });
+
     try {
       const result = await login({ email, contrasena: password, recaptcha_token: recaptchaToken });
 

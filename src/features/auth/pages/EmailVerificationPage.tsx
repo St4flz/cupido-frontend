@@ -69,39 +69,25 @@ const EmailVerificationPage: React.FC = () => {
         description: "Tu dirección de email ha sido verificada correctamente.",
       });
 
-      // ✅ FLUJO MEJORADO - Verificar creación real de cuenta
+      // ✅ FLUJO CORRECTO: Después de verificar email, redirigir a login
       if (from === 'register') {
-        // 🔐 VERIFICACIÓN CRÍTICA: Confirmar que el usuario fue creado
-        try {
-          // Intentar obtener el token de autenticación
-          await authAPI.getUserProfile();
-          
-          // Si llegamos aquí, el usuario existe y está autenticado
-          // Redirigir a completar perfil
-          navigate('/auth/complete-register', {
-            state: {
-              email,
-              from: 'register',
-              verificationData: response
-            }
-          });
-          
-        } catch (profileError) {
-          console.error('Error verificando creación de usuario:', profileError);
-          
-          // ❌ EL USUARIO NO FUE CREADO - No permitir continuar
-          toast({
-            title: "Error en la creación de cuenta",
-            description: "No se pudo crear tu cuenta. Por favor, contacta con soporte técnico.",
-            variant: "destructive"
-          });
-          
-          // Redirigir al inicio para que intente registrarse nuevamente
-          setTimeout(() => {
-            navigate('/');
-          }, 3000);
-          return;
-        }
+        console.log('✅ Email verificado exitosamente, redirigiendo a login');
+
+        // Mostrar mensaje de éxito
+        toast({
+          title: "¡Email verificado!",
+          description: "Tu email ha sido verificado. Ahora puedes iniciar sesión.",
+        });
+
+        // Redirigir a login para que el usuario inicie sesión
+        // El login leerá el estadocuenta y redirigirá apropiadamente
+        navigate('/', {
+          state: {
+            showAuthModal: true,
+            authMode: 'login',
+            email: email // Para pre-llenar el campo de email
+          }
+        });
         
       } else if (from === 'login') {
         // Flujo de login: verificar estado de perfil
@@ -127,9 +113,9 @@ const EmailVerificationPage: React.FC = () => {
       } else if (from === 'password-reset') {
         // Flujo de recuperación: redirigir a reset de contraseña
         navigate('/auth/reset-password', {
-          state: { 
-            email, 
-            token: response.verification_token 
+          state: {
+            email,
+            token: response.data?.verification_token || response.data?.token
           }
         });
       } else {

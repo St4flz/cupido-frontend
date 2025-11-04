@@ -42,14 +42,24 @@ const CompleteProfilePage: React.FC = () => {
     }
   }, [userData]);
 
-  const handleClose = () => {
-    if (from === 'register') {
+  const handleClose = async () => {
+    // Siempre hacer logout cuando se vuelve al inicio desde completar perfil
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      // Limpiar tokens manualmente por si acaso
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
+
+      // Limpiar estado global
       const { logout } = useAppStore.getState();
       logout();
+
+      // Navegar al inicio
+      navigate('/');
     }
-    navigate('/');
   };
 
   const handleSubmit = async (profileData: ProfileData) => {

@@ -9,7 +9,7 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 seconds timeout
+  timeout: 60000, // Increased to 60 seconds for registration operations
   withCredentials: true, // Enable sending cookies and credentials
 });
 
@@ -171,6 +171,14 @@ export const authAPI = {
 
   getUserProfile: async () => {
     const response = await api.get('/auth/user-get/');
+    return response.data;
+  },
+
+  refreshToken: async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) throw new Error('No refresh token available');
+
+    const response = await api.post('/auth/token/refresh/', { refresh: refreshToken });
     return response.data;
   },
 };

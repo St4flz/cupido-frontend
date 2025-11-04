@@ -9,7 +9,7 @@ import ReCAPTCHA from '@/components/ui/ReCAPTCHA';
 interface SignUpFormProps {
   onClose: () => void;
   onSwitchToLogin: () => void;
-  onSuccess: () => void;
+  onSuccess: (email: string) => void;
 }
 
 interface SignUpFormData {
@@ -157,6 +157,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
     setIsLoading(true);
 
     try {
+      console.log('🔄 Iniciando registro de usuario...');
+
       // ✅ Registrar usuario en el backend
       const response = await authAPI.register({
         email: formData.email,
@@ -165,15 +167,22 @@ const SignUpForm: React.FC<SignUpFormProps> = ({
         tyc: formData.acceptTerms
       });
 
+      console.log('✅ Registro completado exitosamente:', response);
+
       toast({
         title: "¡Registro exitoso!",
         description: "Se ha enviado un código de verificación a tu email",
       });
 
-      // ✅ Redirigir a verificación de email
-      onSuccess();
+      // ✅ Pasar el email a la función de éxito para que llegue a la página de verificación
+      console.log('📧 Email a pasar a verificación:', formData.email);
+      onSuccess(formData.email);
 
     } catch (error: any) {
+      console.error('❌ Error en registro:', error);
+      console.error('Error details:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error timeout:', error.code === 'ECONNABORTED');
       console.error('Error en registro:', error);
       
       const errorMessage = error.response?.data?.error || 
