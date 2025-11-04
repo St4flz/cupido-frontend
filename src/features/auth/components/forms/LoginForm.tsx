@@ -56,9 +56,14 @@ const LoginForm: React.FC<LoginFormProps> = ({
         onNeedsProfile();
       } else if (estadoCuenta === '0' || estadoCuenta === '3' || estadoCuenta === '2') {
         // Perfil completo - ir al dashboard
+        // Actualizar el store para mostrar el dashboard
+        const { useAppStore } = await import('@/store/appStore');
+        useAppStore.getState().login(result.user);
         onClose();
       } else {
         // Estado desconocido - ir al dashboard por defecto
+        const { useAppStore } = await import('@/store/appStore');
+        useAppStore.getState().login(result.user);
         onClose();
       }
     } catch (error) {

@@ -77,12 +77,15 @@ const CompleteProfilePage: React.FC = () => {
 
       try {
         const userProfile = await authAPI.getUserProfile();
-        
+
         if (userProfile.estado === '2' || !userProfile.should_complete_profile) {
-          navigate('/dashboard', { 
+          // Cambiar el estado del store para mostrar dashboard en lugar de navegar
+          const { useAppStore } = await import('@/store/appStore');
+          useAppStore.getState().openDashboard();
+          navigate('/', {
             replace: true,
-            state: { 
-              welcomeMessage: '¡Bienvenido a CUPIDO! Tu perfil está completo.' 
+            state: {
+              welcomeMessage: '¡Bienvenido a CUPIDO! Tu perfil está completo.'
             }
           });
         } else {
@@ -91,11 +94,17 @@ const CompleteProfilePage: React.FC = () => {
             description: "Tu información ha sido guardada, pero aún faltan algunos datos.",
             variant: "default"
           });
-          navigate('/dashboard');
+          // Cambiar el estado del store para mostrar dashboard
+          const { useAppStore } = await import('@/store/appStore');
+          useAppStore.getState().openDashboard();
+          navigate('/');
         }
       } catch (profileError) {
         console.error('Error verificando perfil:', profileError);
-        navigate('/dashboard');
+        // Cambiar el estado del store para mostrar dashboard
+        const { useAppStore } = await import('@/store/appStore');
+        useAppStore.getState().openDashboard();
+        navigate('/');
       }
 
     } catch (error: unknown) {
